@@ -20,18 +20,10 @@ function secondsToMinutesSecond(seconds) {
 
 async function getSongs(folder) {
     currfolder = folder;
-    let a = await fetch(`http://127.0.0.1:5500/${folder}`);
-    let response = await a.text();
-    let div = document.createElement("div");
-    div.innerHTML = response;
-    let as = div.getElementsByTagName("a");
-    let songsList = [];
-    for (let index = 0; index < as.length; index++) {
-        const element = as[index];
-        if (element.href.endsWith(".mp3")) {
-            songsList.push(element.href.split(`/${folder}/`)[1]);
-        }
-    }
+
+    let res = await fetch(`/${folder}/songs.json`);
+    let songsList = await res.json();
+
     songs = songsList;
     return songs;
 }
@@ -47,39 +39,27 @@ const playMusic = (track, pause = false) => {
 }
 
 async function displayAlbums() {
-    let a = await fetch(`http://127.0.0.1:5500/songs/`);
-    let response = await a.text();
-    let div = document.createElement("div");
-    div.innerHTML = response;
-    let anchors = div.getElementsByTagName("a");
+    let res = await fetch(`/songs/albums.json`);
+    let folders = await res.json();
+
     let cardContainer = document.querySelector(".cardContainer");
 
-    Array.from(anchors).forEach(async e => {
-        if (e.href.includes("/songs") && !e.href.includes(".htaccess")) {
-           let folder = e.getAttribute("href").split("/").filter(Boolean).pop();
+    for (let folder of folders) {
+        try {
+            let data = await fetch(`/songs/${folder}/info.json`);
+            let info = await data.json();
 
-
-
-            try {
-                let a = await fetch(`http://127.0.0.1:5500/songs/${folder}/info.json`);
-                let response = await a.json();
-
-                cardContainer.innerHTML += `
-                <div class="card" data-folder="songs/${folder}">
-                    <div class="play">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M5 20V4L19 12L5 20Z" stroke="#141B34" fill="#000" stroke-width="1.5" stroke-linejoin="round" />
-                        </svg>
-                    </div>
-                    <img src="/songs/${folder}/cover.jpg" alt="">
-                    <h2>${response.title}</h2>
-                    <p>${response.description}</p>
-                </div>`;
-            } catch (err) {
-                console.error(`Error loading info.json for folder ${folder}:`, err);
-            }
+            cardContainer.innerHTML += `
+            <div class="card" data-folder="songs/${folder}">
+                <div class="play">▶</div>
+                <img src="/songs/${folder}/cover.jpg" alt="">
+                <h2>${info.title}</h2>
+                <p>${info.description}</p>
+            </div>`;
+        } catch (err) {
+            console.error("Error loading folder:", folder, err);
         }
-    });
+    }
 
     document.addEventListener("click", async e => {
         if (e.target.closest(".card")) {
